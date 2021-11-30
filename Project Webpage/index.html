@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en"><head>  
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <title>Computer Vision Course Project
+  | ECE, Virginia Tech | Fall 2021: ECE 4554/5554</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+<!-- Le styles -->  
+  <link href="css/bootstrap.css" rel="stylesheet">
+<style>
+body {
+padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+}
+.vis {
+color: #3366CC;
+}
+.data {
+color: #FF9900;
+}
+</style>
+  
+<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+
+<!-- HTML5 shim, for IE6-8 support of HTML5 elements --><!--[if lt IE 9]>
+<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+</head>
+
+<body>
+<div class="container">
+<div class="page-header">
+
+<!-- Title and Name --> 
+<h1>Visual Identification of State-Space for Street Fighter II</h1> 
+<span style="font-size: 20px; line-height: 1.5em;"><strong>Bryson Howell, Adrian Ruvalcaba, Sandesh Jain</strong></span><br>
+<span style="font-size: 18px; line-height: 1.5em;">Fall 2021 ECE 4554/5554 Computer Vision: Course Project</span><br>
+<span style="font-size: 18px; line-height: 1.5em;">Virginia Tech</span>
+<hr>
+
+<!-- Goal -->
+<h3>Problem Statement</h3>
+
+The objective of this project is to apply computer vision techniques to visually identify state features within the video game Street Fighter II for the Sega Genesis. Reinforcement learning has been used to train agents to play Street Fighter II and similar fighting games in the past [1,2], but these approaches relied upon interfacing with the games’ code to extract state information. Since most video games are proprietary software and access to their code is limited, state information must be extracted visually from video footage of the game. This project is aimed at making such state-space feature extraction possible even with just the video game display information available to the program.
+<br><br>
+
+
+<!-- Approach -->
+<h3>Approach</h3>
+<h4>State Space Description</h4>
+There are several different state features within the Street Fighter II environment, each of which must be identified visually with a suitable technique. There are three major pieces of information related to the game environment that must be recognized: the time remaining in a match, the current health of each character, and the number of rounds won by each character. This information is presented in a static user interface, and each piece of information can be found efficiently through different means. The number of rounds each character has won are indicated by icons in the corners of the game screen, and can be identified by a simple similarity score. 
+
+One of the most important state features within the Street Fighter II environment is the current status of each character. The status of a character is decided by actions that a character has taken or actions that the opponent has taken against the character, these actions are identified by the ‘Character Action Identification’ module. For example, if character A lands a “close standing jab” against character B, character A will be in the “close standing jab” status while character B will be in the “damaged” status. A character’s status largely determines the actions available to that character. Using the previous example, character A will be able to follow up their attack with another while character B will be unable to act at all until they no longer have the damaged status.
+<br><br>
+<h4>State Space Identification</h4>
+<strong>Template Matching:</strong> Character statuses are conveyed visually to players through unique animations that can be identified through template matching. The target for this section is to return the initial character ROI which will then be used by the KCFT. While modern approaches to template matching can account for changes in the transformation of the object being recognized [3], these methods are not necessary for the Street Fighter II environment since character animations for specific statuses are only varied by vertical flipping. A template matching algorithm that prioritizes computational speed would be preferred, since the current state of the environment must be recognized in real-time for some reinforcement learning applications. Therefore, a template matching algorithm similar to the one presented in [4] will be used.
+<br><br>
+<strong>KCFT:</strong> After the initial region of interest has been provided we switch to an efficient tracker known as “Kernelized Correlation Filter-based Tracking” or KCFT [5]. The objective of this module is to track the game character ROI throughout the video game. The core idea behind KCFT is derived from ridge regression and solved in the Fourier domain with complex values, this is not a huge shift as the transpose of the data matrix with one sample per row gets replaced by the Hermitian Transpose to accommodate complex numbers. Additionally, the kernelization here is similar to the famous kernel trick used to map the input matrix by a non-linear kernel. Specific kernels like the RBF Gaussian kernel work for KCFT. The filter is trained from transitioned data points of the target window. Once the new ROI has been found the target is updated and the iterations continue until the end-of-frame or if the target moves out of the ROI faster than the KCFT output. The edge of the KCF tracker is the computational efficiency. The reason is that the computation can be performed effectively in the Fourier domain. Thus, the tracker runs in real-time, at an impressive frame rate.
+<br><br>
+<strong>Character Action Identification:</strong> Now that the major computational cost of repeatedly finding the target throughout the frames has been efficiently handled by the KCFT, we can build a shallow neural network with at most 2 hidden layers to identify the character action. This way we avoid:
+<br>
+  <li>Searching for the character in the entire image and then classifying its action.</li>
+  <li>Using DNN architectures that grow in O(n2) or O(n3) complexity with the input.</li>
+<br>
+A shallow network can be trained with the character dataset to predict the actions from the input ROI provided by the KCFT. This would reduce the time complexity of the task as a lower number of parameters are to be optimized. The hyperparameters like density of neurons, step-size, etc shall be found using KFolds cross-validation to ensure the best models are chosen and overfitting is avoided. Additionally, the ROI makes the implementation scalable to high-resolution and high fps games which is also an effect of a much smaller input image than the entire frame. The ultimate goal here is to make predictions in real-time. Although networks like YOLO [6] are able to perform this in real-time as well, the models are not scalable to higher resolution videos and high frame-rate which is a benchmark for most games.
+<br><br>
+<strong>User Interface Information Extraction:</strong> Each character’s health is represented by a meter at the top of the screen; the current health of each character can be found by comparing the position of the edge of their health bar to the position of the end of the meter. This can be accomplished using an edge detection method, such as the Canny Edge Detection algorithm implemented in OpenCV. The time remaining in a match can be read using OpenCV’s Optical Character Recognition API [7].
+<br><br>
+<!-- Results -->
+<h3>Experiments and Results</h3>
+The experiment will utilize OpenAI’s Gym Retro platform to emulate Street Fighter II for the Sega Genesis. This method will allow us to play the game within a Python window and control it with numeric inputs. While our approach will not require the use of inputs to determine the character states, it will prove useful when creating a custom dataset for template matching.
+<br><br>
+<strong>Template Creation</strong>
+<br>
+Each action a character can take has its own unique animation. By detecting when certain animations are performed, we can update the state of the character accordingly. While we have found various sources that already have labeled action animations, our plan is to generate the templates ourselves directly from the game environment. This will be accomplished by starting a game and identifying a Region of Interest (ROI). Given how the starting location of each character is constant, we will have previously determined an adequate ROI that surrounds the player character. Once the game starts, we will provide certain inputs to the environment that perform the desired actions. The animation frames for the character will be captured within the ROI, and the images will be saved under the label of the action taken. This process is repeated until we have a character template for each action we wish to identify. 
+<br><br>
+<strong>Experiment</strong><br>
+When the game is started, there is a window of several seconds where a timer counts down and no inputs are read. We will utilize this time as calibration, where the character’s location will be identified on the screen using template matching and the ROI will be defined as the area surrounding it. As the game starts, we will utilize Kernelized Correlation Filter-based Tracking (KCFT) to update the ROI based on player movement, while simultaneously feeding the character animation frames within the ROI into a classification network that identifies the current actions being performed. In addition to tracking the character, we will also be calculating character health and time remaining in each match, which can be found at the top of the screen. At each frame of the gameplay, our approach will return a tuple with information regarding the position of the character, the current action being taken, the health of the characters, and the time remaining. As an extension to the current work, these state representations could then easily be fed into a reinforcement learning application for training or testing.
+<br><br>
+<strong>Result Validation</strong>
+<br>
+To verify our approach is able to accurately identify the state-space of the character, we propose two methods of validation:
+<br>
+<li><strong>Static Template Comparison:</strong> After creating the dataset using the Template Creation method described above, we will have a large number of labeled images that will be used to train a classification neural network. Before training, we can set aside a percentage of the dataset (typically between 20%-30%) for testing. After the network has been trained we can use these held-out images as inputs and measure the ratio of correct/incorrect predictions to get the accuracy of the action prediction.</li>
+<br>
+<li><strong>Simulated Gameplay Comparison:</strong> One of the features of OpenAI Gym is the ability to retrieve states directly from the environment. We can utilize this feature by comparing the output states from our approach with the labelled states from the environment. By using manual input or a pretrained model, we can compare the accuracy of predictions at each frame. We expect the predictions to be in real-time or close given our choice of algorithms that’d perform better at the specific tasks than a generalized approach.</li>
+<br><br>
+
+<!-- References -->
+<h3>References</h3>
+[1] Hasan, M. (2020, May 20). Street Fighter II is hard, so I trained an AI to beat it for me. Towards Data Science. https://towardsdatascience.com/street-fighter-ii-is-hard-so-i-trained-an-ai-to-beat-it-for-me-891dd5fc05be<br>
+[2] Oh, I., Rho, S., Moon, S., Son, S., Lee, H., & Chung, J. (2021). Creating pro-level ai for a real-time fighting game using deep reinforcement learning. Ieee Transactions on Games, (2021). https://doi.org/10.1109/TG.2021.3049539<br>
+[3] Wakahara, T., Yamashita, Y., & 22nd International Conference on Pattern Recognition, ICPR 2014 22 2014 08 24 - 2014 08 28. (2014). Gpt correlation for 2d projection transformation invariant template matching. Proceedings - International Conference on Pattern Recognition, 3810-3815, 3810–3815. https://doi.org/10.1109/ICPR.2014.654<br>
+[4] Schweitzer, H., Bell, J. W., Wu, F., 7th European Conference on Computer Vision, ECCV 2002 7 2002 05 28 - 2002 05 31. (2002). Very fast template matching. Lecture Notes in Computer Science (Including Subseries Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics), 2353, 358–372.<br>
+[5] Henriques J. F., Caseirio R., Martins P., Batista J. High-Speed Tracking with Kernelized Correlation Filters. IEEE Trans on PAMI 37(3):583-596. 2015<br>
+[6] J. Redmon, S. Divvala, R. Girshick and A. Farhadi, "You Only Look Once: Unified, Real-Time Object Detection," 2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016, pp. 779-788, doi: 10.1109/CVPR.2016.91.<br>
+[7] Bradski, G. (2000). The OpenCV Library. Dr. Dobb’s Journal of Software Tools.<br>
+<br><br>
+
+
+  <hr>
+  <footer> 
+  <p>© Bryson Howell, Adrian Ruvalcaba, Sandesh Jain</p>
+  </footer>
+</div>
+</div>
+
+<br><br>
+
+</body></html>
