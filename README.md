@@ -1,4 +1,4 @@
-# CV_FinalProject
+# Visual Identification of State Space for Street Fighter 2
 Final project for ECE 4554 / 5554 / Computer Vision Fall 2021
 
 
