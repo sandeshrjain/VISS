@@ -46,15 +46,17 @@ def extract_statespace(episodes):
                     #Get initial location of Ryu
 
                 #Get position from KCFT
+
                 #Get character status
+
                 #Get timer using OCR
-                if(c == 'chunli'):
-                    time = extractText(img)
+                #time = extractText(img)
 
                 #Get health
+                health = getHealth(img)
 
                 #Add information to dataframe (placeholder values)
-                info = [[2.1, 0.5, 'crouch', 100, 180]]   #pos, state, health, timer
+                info = [[2.1, 0.5, 'crouch', health, 180]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
@@ -64,6 +66,59 @@ def extract_statespace(episodes):
             #state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
 
     return
+
+#Estimates player health from the image of the health bar
+def getHealth(img):
+
+    #Set region of image where healthbar is
+    x1 = 12
+    x2 = 24
+    y1 = 32
+    y2 = 120
+
+    #Get ROI for timer (grayscale)
+    roi = img[x1:x2, y1:y2]
+    #roi_color = roi
+    #roi = cv2.cvtColor(np.float32(roi), cv2.COLOR_BGRA2GRAY)
+    #roi = roi/np.amax(roi)
+
+    #print("Red part = ")
+    #print(roi_color[5,20])
+    #print("Yellow part = ")
+    #print(roi_color[5,70])
+
+    #Red = [232 0 0]
+    #Yellow = [232 204 0]
+
+    #showim = 0
+    #if(showim == 1):
+    #    fig = plt.figure()
+    #    ax1 = fig.add_subplot(2,2,1)
+    #    plt.imshow(roi,cmap='gray')
+    #    ax2 = fig.add_subplot(2,2,2)
+    #    ax2.imshow(roi_color)
+    #    plt.waitforbuttonpress()
+    #    plt.close()
+
+    #Search for yellow part of bar
+    for c in range(0,y2-y1):
+        g = roi[5,c,1]
+        #Found yellow edge
+        if(g == 204):
+            health = 100 - (np.float32(c) / np.float32(y2-y1))*100.0
+            return health
+    return 0
+
+    print(health)
+    titlegraph = "Health = " + str(health)
+    fig = plt.figure()
+    plt.title(titlegraph)
+    plt.imshow(roi)
+    plt.waitforbuttonpress()
+    plt.close()
+
+
+    return health
 
 #Runs through images in the dataset and reports the timer at each frame
 def extractText(img):
@@ -98,7 +153,7 @@ def extractText(img):
     fig = plt.figure()
     plt.imshow(roi,cmap='gray')
     plt.waitforbuttonpress()
-    plt.cla()
+    plt.close()
 
 
     #Test detection w/o thresholding
@@ -125,7 +180,7 @@ def extractText(img):
     fig = plt.figure()
     plt.imshow(roi_thresh, cmap='gray')
     plt.waitforbuttonpress()
-    plt.cla()
+    plt.close()
 
     return 0
 
