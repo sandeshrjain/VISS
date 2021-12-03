@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
+import pytesseract
 import cv2
-
 
 def main():
 
@@ -46,7 +47,11 @@ def extract_statespace(episodes):
 
                 #Get position from KCFT
                 #Get character status
-                #Get timer and health
+                #Get timer using OCR
+                if(c == 'chunli'):
+                    time = extractText(img)
+
+                #Get health
 
                 #Add information to dataframe (placeholder values)
                 info = [[2.1, 0.5, 'crouch', 100, 180]]   #pos, state, health, timer
@@ -55,10 +60,76 @@ def extract_statespace(episodes):
                 counter += 1
 
             #Save df as csv
-            print("saving")
-            state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
+            #print("saving")
+            #state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
 
     return
+
+#Runs through images in the dataset and reports the timer at each frame
+def extractText(img):
+
+    #Set region of image where timer is
+    #Exact box around numbers
+    x1 = 29
+    x2 = 40
+    y1 = 120
+    y2 = 135
+    #test - wider bounding box
+    x1 = 26
+    x2 = 43
+    y1 = 117
+    y2 = 138
+
+    #Test - blur the entire image
+    #img = cv2.GaussianBlur(np.float32(img),(3,3),cv2.BORDER_DEFAULT)
+    #img = img/np.amax(img)
+    #fig = plt.figure()
+    #plt.imshow(img)
+    #plt.waitforbuttonpress()
+    #plt.cla()
+
+    #Get ROI for timer (grayscale)
+    roi = img[x1:x2, y1:y2]
+    roi = cv2.cvtColor(np.float32(roi), cv2.COLOR_BGRA2GRAY)
+
+    #Blur the ROI w/ timer
+    roi = cv2.GaussianBlur(np.float32(roi),(3,3),cv2.BORDER_DEFAULT)
+    roi = roi/np.amax(roi)
+    fig = plt.figure()
+    plt.imshow(roi,cmap='gray')
+    plt.waitforbuttonpress()
+    plt.cla()
+
+
+    #Test detection w/o thresholding
+    pil_img = Image.fromarray(roi)  #Change from openCV BGR to Pillow RGB
+    if(pil_img.mode != 'RGB'):
+        pil_img = pil_img.convert('RGB')
+    #text = pytesseract.image_to_string(pil_img, lang='eng', config='-c tessedit_char_whitelist=0123456789')
+    text = pytesseract.image_to_string(pil_img, lang='eng', config='digits')
+    print("ROI text = " + text)
+
+
+    #Threshold image for text extraction
+    junk, roi_thresh = cv2.threshold(roi, 65, 255, cv2.THRESH_BINARY)
+
+    #Extract text
+    roi_thresh = cv2.bitwise_not(roi_thresh)    #Invert color so text is black
+    pil_img = Image.fromarray(roi_thresh)  #Change from openCV BGR to Pillow RGB
+    if(pil_img.mode != 'RGB'):
+        pil_img = pil_img.convert('RGB')
+    text = pytesseract.image_to_string(pil_img, lang='eng', config='-c tessedit_char_whitelist=0123456789')
+
+    #Test - view image
+    print("Thresholded text = " + text)
+    fig = plt.figure()
+    plt.imshow(roi_thresh, cmap='gray')
+    plt.waitforbuttonpress()
+    plt.cla()
+
+    return 0
+
+
 
 #Here we'll compare the accuracy of our predictions to the values from memory
 def experiment():
