@@ -47,16 +47,16 @@ def extract_statespace(episodes):
 
                 #Get position from KCFT
 
-                #Get character status
+                #Get character status from template
 
                 #Get timer using OCR
-                #time = extractText(img)
+                time = extractText(img)
 
                 #Get health
                 health = getHealth(img)
 
                 #Add information to dataframe (placeholder values)
-                info = [[2.1, 0.5, 'crouch', health, 180]]   #pos, state, health, timer
+                info = [[2.1, 0.5, 'crouch', health, 99]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
@@ -76,29 +76,8 @@ def getHealth(img):
     y1 = 32
     y2 = 120
 
-    #Get ROI for timer (grayscale)
+    #Get ROI for timer
     roi = img[x1:x2, y1:y2]
-    #roi_color = roi
-    #roi = cv2.cvtColor(np.float32(roi), cv2.COLOR_BGRA2GRAY)
-    #roi = roi/np.amax(roi)
-
-    #print("Red part = ")
-    #print(roi_color[5,20])
-    #print("Yellow part = ")
-    #print(roi_color[5,70])
-
-    #Red = [232 0 0]
-    #Yellow = [232 204 0]
-
-    #showim = 0
-    #if(showim == 1):
-    #    fig = plt.figure()
-    #    ax1 = fig.add_subplot(2,2,1)
-    #    plt.imshow(roi,cmap='gray')
-    #    ax2 = fig.add_subplot(2,2,2)
-    #    ax2.imshow(roi_color)
-    #    plt.waitforbuttonpress()
-    #    plt.close()
 
     #Search for yellow part of bar
     for c in range(0,y2-y1):
@@ -109,15 +88,6 @@ def getHealth(img):
             return health
     return 0
 
-    print(health)
-    titlegraph = "Health = " + str(health)
-    fig = plt.figure()
-    plt.title(titlegraph)
-    plt.imshow(roi)
-    plt.waitforbuttonpress()
-    plt.close()
-
-
     return health
 
 #Runs through images in the dataset and reports the timer at each frame
@@ -125,10 +95,10 @@ def extractText(img):
 
     #Set region of image where timer is
     #Exact box around numbers
-    x1 = 29
-    x2 = 40
-    y1 = 120
-    y2 = 135
+    #x1 = 29
+    #x2 = 40
+    #y1 = 120
+    #y2 = 135
     #test - wider bounding box
     x1 = 26
     x2 = 43
@@ -143,41 +113,62 @@ def extractText(img):
     #plt.waitforbuttonpress()
     #plt.cla()
 
-    #Get ROI for timer (grayscale)
+    #Get ROI for timer
     roi = img[x1:x2, y1:y2]
-    roi = cv2.cvtColor(np.float32(roi), cv2.COLOR_BGRA2GRAY)
+    #roi = cv2.cvtColor(np.float32(roi), cv2.COLOR_BGRA2GRAY)
 
     #Blur the ROI w/ timer
-    roi = cv2.GaussianBlur(np.float32(roi),(3,3),cv2.BORDER_DEFAULT)
-    roi = roi/np.amax(roi)
-    fig = plt.figure()
-    plt.imshow(roi,cmap='gray')
-    plt.waitforbuttonpress()
-    plt.close()
+    #roi = cv2.GaussianBlur(np.float32(roi),(3,3),cv2.BORDER_DEFAULT)
+    #roi = roi/np.amax(roi)
+    #fig = plt.figure()
+    #plt.imshow(roi)
+    #plt.waitforbuttonpress()
+    #plt.close()
 
 
     #Test detection w/o thresholding
-    pil_img = Image.fromarray(roi)  #Change from openCV BGR to Pillow RGB
-    if(pil_img.mode != 'RGB'):
-        pil_img = pil_img.convert('RGB')
+    #pil_img = Image.fromarray(roi)  #Change from openCV BGR to Pillow RGB
+    #if(pil_img.mode != 'RGB'):
+#        pil_img = pil_img.convert('RGB')
     #text = pytesseract.image_to_string(pil_img, lang='eng', config='-c tessedit_char_whitelist=0123456789')
-    text = pytesseract.image_to_string(pil_img, lang='eng', config='digits')
-    print("ROI text = " + text)
+    #text = pytesseract.image_to_string(pil_img, lang='eng', config='digits')
+    #print("ROI text = " + text)
 
 
     #Threshold image for text extraction
-    junk, roi_thresh = cv2.threshold(roi, 65, 255, cv2.THRESH_BINARY)
+    #junk, roi_thresh = cv2.threshold(roi, 65, 255, cv2.THRESH_BINARY)
+
+    #Manually create thresholded image
+    red = np.array([232,0,0])               #Colors in the timer numbers
+    yellow = np.array([232,204,0])
+    orange = np.array([232,100,0])
+    roi_thresh = np.zeros(np.shape(roi),np.int32())
+    for r in range(0,np.shape(roi)[0]):
+        for c in range(0,np.shape(roi)[1]):
+            if(np.array_equal(roi[r][c],red) or np.array_equal(roi[r][c],yellow) or np.array_equal(roi[r][c],orange)):
+                roi_thresh[r][c] = [0,0,0]
+            else:
+                roi_thresh[r][c] = [255,255,255]
+
+    #Format image for detection
+    roi_thresh = cv2.cvtColor(np.float32(roi_thresh), cv2.COLOR_BGRA2GRAY)
+    roi_thresh = roi_thresh/np.amax(roi_thresh)
+    roi_thresh = cv2.resize(roi_thresh, dsize=(roi_thresh.shape[1]*4,roi_thresh.shape[0]*4), interpolation=cv2.INTER_AREA)
+    roi_thresh = cv2.GaussianBlur(np.float32(roi_thresh),(5,5),cv2.BORDER_DEFAULT)
+    junk, roi_thresh = cv2.threshold(roi_thresh, 0.2, 1, cv2.THRESH_BINARY)
 
     #Extract text
-    roi_thresh = cv2.bitwise_not(roi_thresh)    #Invert color so text is black
     pil_img = Image.fromarray(roi_thresh)  #Change from openCV BGR to Pillow RGB
     if(pil_img.mode != 'RGB'):
         pil_img = pil_img.convert('RGB')
-    text = pytesseract.image_to_string(pil_img, lang='eng', config='-c tessedit_char_whitelist=0123456789')
+    text = pytesseract.image_to_string(pil_img, lang='eng', config='-c tessedit_char_whitelist=0123456789 --psm 6')
+    #text = pytesseract.image_to_string(pil_img, lang='eng', config='digits')
+    print(text)
 
     #Test - view image
-    print("Thresholded text = " + text)
+    #print("Thresholded text = " + text)
     fig = plt.figure()
+    plt.title(text)
     plt.imshow(roi_thresh, cmap='gray')
     plt.waitforbuttonpress()
     plt.close()
