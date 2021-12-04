@@ -20,6 +20,7 @@ def extract_statespace(episodes):
 
     #Names of the characters fought in each episode
     characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
+    #characters = ['blanka','chunli','ehonda','ryu','zangief']
     #Data we're extracting
     states = ['x_position', 'y_position', 'status', 'health', 'round_timer']
 
@@ -35,28 +36,27 @@ def extract_statespace(episodes):
             counter = 0
             for i in range(0,np.shape(images)[0]):
                 img = images[i]
-                #Test to show images are being loaded correctly
+
+                #Test to look at images
                 if(i == 0):
                     print("Character = " + c + "   Episode = " + str(e))
                     fig = plt.figure()
                     plt.imshow(img)
                     plt.waitforbuttonpress()
-                    plt.cla()
+                    plt.close()
 
-                    #Get initial location of Ryu
+                #Get ROI, status from template match?
 
                 #Get position from KCFT
 
-                #Get character status from template
-
                 #Get timer using OCR
-                time = extractText(img)
+                #time = extractText(img)
 
                 #Get health
-                health = getHealth(img)
+                #health = getHealth(img)
 
                 #Add information to dataframe (placeholder values)
-                info = [[2.1, 0.5, 'crouch', health, 99]]   #pos, state, health, timer
+                info = [[2.1, 0.5, 'crouch', 0, 99]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1

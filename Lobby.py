@@ -80,6 +80,14 @@ class Lobby():
         self.game = game
         self.render = render
         self.mode = mode
+
+        #For recording data
+        self.states = ['x_position', 'y_position', 'status', 'health', 'round_timer']
+        self.images = []
+        self.counter = 0
+        self.state_df = pd.DataFrame(columns=self.states)
+
+
         self.clearLobby()
 
     def initEnvironment(self, state):
@@ -179,13 +187,9 @@ class Lobby():
         -------
         None
         """
-
-        #Set up data
-        states = ['x_position', 'y_position', 'status', 'health', 'round_timer']
-        images = []
-        counter = 0
-        state_df = pd.DataFrame(columns=states)
-
+        self.images = []
+        self.counter = 0
+        self.state_df = pd.DataFrame(columns=self.states)
         self.initEnvironment(state)
         while not self.done:
 
@@ -202,27 +206,19 @@ class Lobby():
             self.players[0].recordStep((self.lastObservation, self.lastInfo, self.lastAction, self.lastReward, obs, info, self.done))
             self.lastObservation, self.lastInfo = [obs, info]                   # Overwrite after recording step so Agent remembers the previous state that led to this one
 
+            #if(self.counter % 10 == 0):    #reduce frames captured
             #Log environment image
-            images.append(obs)
-            #if(first):
-            #    print('starting')
-            #    images = np.zeros((1,obs.shape[0],obs.shape[1],obs.shape[2]),dtype=np.int32())
-            #    images[0] = obs
-            #    first = False
-            #else:
-            #    images = np.append(images, obs, axis=0)
+            self.images.append(obs)
             #Log state observations
-            test = [[info[x] for x in states]]
-            info_df = pd.DataFrame([[info[x] for x in states]], index = [counter], columns=states)
-            state_df = state_df.append(info_df)
-            counter += 1
+            info_df = pd.DataFrame([[info[x] for x in self.states]], index = [self.counter], columns=self.states)
+            self.state_df = self.state_df.append(info_df)
+            self.counter += 1
 
         #Save image array
-        print(counter)
-        images = np.asarray(images,dtype=np.int32())
-        np.save('../../data/' + 'episode' + str(ep) + '_' + state + '_images.npy',images)
+        image_arr = np.asarray(self.images,dtype=np.int32())
+        np.save('../../data/' + 'episode' + str(ep) + '_' + state + '_images.npy',image_arr)
         #Convert state observations to csv and save
-        state_df.to_csv('../../data/' + 'episode' + str(ep) + '_' + state + '_statespace.csv')
+        self.state_df.to_csv('../../data/' + 'episode' + str(ep) + '_' + state + '_statespace.csv')
 
         self.environment.close()
         if self.render: self.environment.viewer.close()
@@ -273,12 +269,21 @@ class Lobby():
         """
         while not self.isActionableState(info, action= self.frameInputs[-1]):
             obs, tempReward, self.done, info = self.environment.step(Lobby.NO_ACTION)
+
             if self.done: return info, obs
             if self.render: self.environment.render()
             if self.render:
                 self.environment.render()
                 time.sleep(Lobby.FRAME_RATE)
             self.lastReward += tempReward
+
+            #Record data while waiting
+            #if(self.counter % 10 == 0):    #Reduce the number of frames captured
+            self.images.append(obs)
+            info_df = pd.DataFrame([[info[x] for x in self.states]], index = [self.counter], columns=self.states)
+            self.state_df = self.state_df.append(info_df)
+            self.counter += 1
+
         return info, obs
 
     def executeTrainingRun(self, review= True, episodes= 1):
