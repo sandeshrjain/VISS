@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pytesseract
 import cv2
-import nn_recog
+import NN_recog
 
 
 kcft = cv2.TrackerKCF_create()
 
-train_all, train_all_labels = nn_recog.dataset_proc()
-model = nn_recog.model_dev(train_all, train_all_labels)
+train_all, train_all_labels = NN_recog.dataset_proc()
+model = NN_recog.model_dev(train_all, train_all_labels)
 train_all = []
 train_all_labels = []
 
@@ -69,7 +69,7 @@ def extract_statespace(episodes):
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
                     k = cv2.waitKey(1) & 0xff
-                    if k == 27 : nn_recog.pred_loop(frame[int(roi[1]):int(roi[1] + roi[3]) , int(roi[0]):int(roi[0] + roi[2])], model)
+                    if k == 27 : NN_recog.pred_loop(frame[int(roi[1]):int(roi[1] + roi[3]) , int(roi[0]):int(roi[0] + roi[2])], model)
                 else :
                     # In case of failure
                     cv2.putText(frame, "Target Undetectable", (50,100), 
