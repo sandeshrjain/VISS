@@ -52,16 +52,17 @@ def extract_statespace(episodes):
             counter = 0
             init_kcft, frame = True, images[0]
             frame = (np.uint8(frame))
+            height, width, layers = images[0].shape
+            size = (width, height)
 
+            out = cv2.VideoWriter('project_annotated.avi',cv2.VideoWriter_fourcc(*'DIVX'), 40, size)
             roi = cv2.selectROI(frame, False)
             init_kcft = kcft.init(np.uint8(frame), roi)
             for i in range(1,np.shape(images)[0]):
                 img1 = np.uint8(images[i])
                 # next frame
                 frame = img1
-                # if not init_kcft:
-                #     break
-                # Update 
+            
                 init_kcft, roi = kcft.update(frame)
                 if init_kcft:
                     #  success
@@ -69,7 +70,7 @@ def extract_statespace(episodes):
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
                     k = cv2.waitKey(1) & 0xff
-                    if k == 27 : NN_recog.pred_loop(frame[int(roi[1]):int(roi[1] + roi[3]) , int(roi[0]):int(roi[0] + roi[2])], model)
+                    if k == 27 : break
                 else :
                     # In case of failure
                     cv2.putText(frame, "Target Undetectable", (50,100), 
@@ -78,35 +79,40 @@ def extract_statespace(episodes):
                             (255,255,255),1);
                 cv2.putText(frame, "ROI", corner_1, cv2.FONT_HERSHEY_PLAIN, 2, 
                             (0,0,255),1);
-                cv2.imshow(frame)
+                #cv2.imshow(frame)
+                out.write(cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
+                cv2.imshow("annotated", cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
+                #cv2.destroyAllWindows()
+            out.release()
+            cv2.destroyAllWindows()
 
-                #Test to look at images
-                if(i == 0):
-                    print("Character = " + c + "   Episode = " + str(e))
-                    fig = plt.figure()
-                    plt.imshow(img)
-                    plt.waitforbuttonpress()
-                    plt.close()
+            #Test to look at images
+            if(i == 0):
+                print("Character = " + c + "   Episode = " + str(e))
+                fig = plt.figure()
+                plt.imshow(img)
+                plt.waitforbuttonpress()
+                plt.close()
 
-                #Get ROI, status from template match?
+            #Get ROI, status from template match?
 
-                #Get position from KCFT
+            #Get position from KCFT
 
-                #Get timer using OCR
-                #time = extractText(img)
+            #Get timer using OCR
+            #time = extractText(img)
 
-                #Get health
-                #health = getHealth(img)
+            #Get health
+            #health = getHealth(img)
 
-                #Add information to dataframe (placeholder values)
-                info = [[2.1, 0.5, 'crouch', 0, 99]]   #pos, state, health, timer
-                info_df = pd.DataFrame(info, index = [counter], columns=states)
-                state_df = state_df.append(info_df)
-                counter += 1
+            #Add information to dataframe (placeholder values)
+            info = [[2.1, 0.5, 'crouch', 0, 99]]   #pos, state, health, timer
+            info_df = pd.DataFrame(info, index = [counter], columns=states)
+            state_df = state_df.append(info_df)
+            counter += 1
 
-            #Save df as csv
-            #print("saving")
-            #state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
+        #Save df as csv
+        #print("saving")
+        #state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
 
     return
 
