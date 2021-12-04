@@ -22,3 +22,7 @@
     #We need to do some more work here to interpret the data:
       #status is probably defined somewhere in the StreetFighterAI code. We need to interpret the integers as labels like "standing", "punch", ect
       #round_timer is counting milliseconds or something, not the time that will be displayed on screen
+
+#Datasets Retrieval for the neural network
+    #Keep the training dataset insidle the folder used in the NN_recog.py, additionally, the dataset is randomized for learning.
+    #Total of 683 images for 7 classes of actions are used.
