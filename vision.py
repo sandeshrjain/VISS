@@ -4,6 +4,22 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pytesseract
 import cv2
+import nn_recog
+
+
+kcft = cv2.TrackerKCF_create()
+
+train_all, train_all_labels = nn_recog.dataset_proc()
+model = nn_recog.model_dev(train_all, train_all_labels)
+train_all = []
+train_all_labels = []
+
+def show_image(img):
+  fig = plt.figure()
+  fig.set_size_inches(18, 10) # You can adjust the size of the displayed figure
+  plt.imshow(img)
+
+
 
 def main():
 
@@ -34,8 +50,35 @@ def extract_statespace(episodes):
             images = np.load(title)
             #Loop through images
             counter = 0
-            for i in range(0,np.shape(images)[0]):
-                img = images[i]
+            init_kcft, frame = True, images[0]
+            frame = (np.uint8(frame))
+
+            roi = cv2.selectROI(frame, False)
+            init_kcft = kcft.init(np.uint8(frame), roi)
+            for i in range(1,np.shape(images)[0]):
+                img1 = np.uint8(images[i])
+                # next frame
+                frame = img1
+                # if not init_kcft:
+                #     break
+                # Update 
+                init_kcft, roi = kcft.update(frame)
+                if init_kcft:
+                    #  success
+                    corner_1 = (int(roi[0]), int(roi[1]))
+                    corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
+                    cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
+                    k = cv2.waitKey(1) & 0xff
+                    if k == 27 : nn_recog.pred_loop(frame[int(roi[1]):int(roi[1] + roi[3]) , int(roi[0]):int(roi[0] + roi[2])], model)
+                else :
+                    # In case of failure
+                    cv2.putText(frame, "Target Undetectable", (50,100), 
+                                cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255),1)
+                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3, 
+                            (255,255,255),1);
+                cv2.putText(frame, "ROI", corner_1, cv2.FONT_HERSHEY_PLAIN, 2, 
+                            (0,0,255),1);
+                cv2.imshow(frame)
 
                 #Test to look at images
                 if(i == 0):
