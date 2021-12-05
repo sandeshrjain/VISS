@@ -16,10 +16,10 @@ import random
 # from tensorflow.keras.utils.np_utils import to_categorical
 # All global variables
 
-class_names = ['backroll', 'block', 'crouch', 'hit', 'crouch', 'jump', 'kick'] #can add character names here
+class_names = ['block', 'crouch', 'idle', 'walking', 'jump', 'kick', 'punch'] #can add character names here
 c = len(class_names) #used for output of the neural network
 #video = ""  #name of the video to perform detection on
-prefix = "C:/Users/Sandesh Jain/OneDrive/Documents/Acads_VT/SEM2/CV/Project/training/training/"
+prefix = "./training/"
 all_paths  = [prefix + x for x in class_names]
 # feed the nn with 100x100 images, hence resize function:
 def resizeImage(image):
@@ -38,10 +38,10 @@ def dataset_proc():
 
     for path in all_paths:
         files = os.listdir(path)
-        if len(files)<100:
+        if len(files)<1000:
             index = random.sample(files, len(files))
         else:
-            index = random.sample(files, 100)
+            index = random.sample(files, 1000)
         for img in index:
             
             image = cv2.imread(path+"/" + img, 0)
@@ -136,7 +136,7 @@ def model_dev(train_all, train_all_labels):
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
     
-    model.fit(train_all, train_all_labels,epochs=200, batch_size = 128)
+    model.fit(train_all, train_all_labels,epochs=100, batch_size = 128)
     return model
 
 
@@ -195,10 +195,6 @@ test_labels=[]
 for test in train_all:
     test_labels.append(pred_loop(test, model))
 
-
-
-
-a = cv2.imread("C:/Users/Sandesh Jain/OneDrive/Documents/000490_depth.jpg")
 
 
 
