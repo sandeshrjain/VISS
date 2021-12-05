@@ -36,8 +36,8 @@ def main():
 def extract_statespace(episodes):
 
     #Names of the characters fought in each episode
-    #characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
-    characters = ['blanka']
+    characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
+    #characters = ['blanka']
     #Data we're extracting
     states = ['kcft_x_position', 'kcft_y_position', 'template_x_position', 'template_y_position', 'nn_status', 'template_status', 'validation_status','health', 'round_timer']
 
