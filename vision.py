@@ -14,7 +14,8 @@ train_all, train_all_labels = NN_recog.dataset_proc()
 model = NN_recog.model_dev(train_all, train_all_labels)
 train_all = []
 train_all_labels = []
-
+#train_labels = ['block', 'crouch', 'idle', 'walking', 'jump', 'punch', 'kick']
+train_labels = ['kick', 'punch', 'jump', 'walking', 'idle', 'block', 'crouch']
 def show_image(img):
   fig = plt.figure()
   fig.set_size_inches(18, 10) # You can adjust the size of the displayed figure
@@ -35,7 +36,7 @@ def main():
 def extract_statespace(episodes):
 
     #Names of the characters fought in each episode
-    characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
+    #characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
     characters = ['blanka']
     #Data we're extracting
     states = ['kcft_x_position', 'kcft_y_position', 'template_x_position', 'template_y_position', 'nn_status', 'template_status', 'validation_status','health', 'round_timer']
@@ -55,8 +56,10 @@ def extract_statespace(episodes):
             #Loop through images
             counter = 0
             init_kcft, frame = True, np.uint8(images[0])
-            size = (frame.shape[0], frame.shape[1])
-            out = cv2.VideoWriter('project_annotated_'+c+'.avi',cv2.VideoWriter_fourcc(*'DIVX'), 40, size)
+            #size = (frame.shape[0], frame.shape[1])
+            size = (250,200)
+            #out = cv2.VideoWriter('project_mod.avi',cv2.VideoWriter_fourcc(*'DIVX'), 25, size)
+            out = cv2.VideoWriter('project_annotated_'+c+'_2.avi',cv2.VideoWriter_fourcc(*'DIVX'), 40, size)
             # Gets initial image and initializes KCFT
             tm_label, roi = tm.getMatchLocation(np.uint8(frame),templates)
             kcft = cv2.TrackerKCF_create()
@@ -75,9 +78,16 @@ def extract_statespace(episodes):
                     corner_1 = (int(roi[0]), int(roi[1]))
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
-                    gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
-                    nn_status = NN_recog.pred_loop(gr_frame, model)
-                    put = "ROI & Action:" + str(nn_status)
+                    # Checks if current label is able to be predicted by NN
+                    for label in train_labels:
+                        if label in val_df['Action'][i]:
+                            gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
+                            nn_status = NN_recog.pred_loop(gr_frame, model)
+                            put = "ROI & Action:" + str(nn_status)
+                            break;
+                        else:
+                            put = "Action Undefined"
+                            nn_status = "N/A"
                 else:
                     # check with template matching if KCFT cant detect
                     match_label, roi = tm.getMatchLocation(frame, templates)
@@ -89,9 +99,16 @@ def extract_statespace(episodes):
                         corner_1 = (int(roi[0]), int(roi[1]))
                         corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                         cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
-                        gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
-                        nn_status = NN_recog.pred_loop(gr_frame, model)
-                        put = "ROI & Action:" + str(nn_status)
+                        # Checks if current label is able to be predicted by NN
+                        for label in train_labels:
+                            if label in val_df['Action'][i]:
+                                gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
+                                nn_status = NN_recog.pred_loop(gr_frame, model)
+                                put = "ROI & Action:" + str(nn_status)
+                                break;
+                            else:
+                                put = "Action Undefined"
+                                nn_status = "N/A"
                     else:
                         # In case of failure
                         cv2.putText(frame, "Target Undetectable", (50,100),
@@ -102,7 +119,6 @@ def extract_statespace(episodes):
                             (255,255,255),1);
                 cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2,
                             (0,0,255),1);
-                out.write(frame)
                 #cv2.imshow("annotated", frame)
 
                 #Get position and status from template match
@@ -126,8 +142,10 @@ def extract_statespace(episodes):
                 state_df = state_df.append(info_df)
                 counter += 1
 
+                #cv2.destroyAllWindows()
+                out.write(cv2.cvtColor(cv2.resize(frame, size,  interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB))
             out.release()
-            cv2.destroyAllWindows()
+            #cv2.destroyAllWindows()
 
             #Save df as csv
             print("Saving ", c, ' Episode ', e)
