@@ -175,6 +175,58 @@ class Lobby():
             if info['status'] != Lobby.JUMPING_STATUS and self.currentJumpFrame > 0: self.currentJumpFrame = 0
             return True
 
+    #Gets name of action. Probably a better way to do this but idk
+    #Light,medium,heavy = low,med,high for our datasets
+    #In SFII it's jab,strong,fierce
+    def actionName(self, ac):
+
+        if(ac == 0):
+            return "idle"
+        if(ac == 1 or ac == 5):
+            return "walking"
+        if(ac == 7):
+            return "jump"
+        if(ac == 6 or ac == 8):
+            return "jump_forward"
+        if(ac == 2 or ac == 3 or ac == 4):
+            return "crouch"
+        if(ac == 9):
+            return "low_punch"
+        if(ac == 10):
+            return "med_high_punch"
+        if(ac == 11):
+            return "forward_high_punch"
+        if(ac == 12):
+            return "low_mid_kick"
+        if(ac == 13):
+            return "forward_med_kick"
+        if(ac == 14):
+            return "high_kick"
+        if(ac == 15):
+            return "crouch_low_punch"
+        if(ac == 16):
+            return "crouch_med_punch"
+        if(ac == 17):
+            return "crouch_high_punch"
+        if(ac == 18):
+            return "crouch_low_kick"
+        if(ac == 19):
+            return "crouch_med_kick"
+        if(ac == 20):
+            return "crouch_high_kick"
+        if(ac == 21 or ac == 22):
+            return "shoulder_toss"
+        if(ac == 23 or ac == 24):
+            return "backroll"
+        if(ac == 25):
+            return "hadouken"
+        if(ac == 26):
+            return "tatsumaki_senpuu_kyaku"
+        if(ac == 27):
+            return "shouryuken"
+
+        return "none"
+
     def play(self, state, ep=0):
         """The Agent will load the specified save state and play through it until finished, recording the fight for training
 
@@ -211,6 +263,7 @@ class Lobby():
             self.images.append(obs)
             #Log state observations
             info_df = pd.DataFrame([[info[x] for x in self.states]], index = [self.counter], columns=self.states)
+            info_df['Action'] = self.actionName(self.lastAction)
             self.state_df = self.state_df.append(info_df)
             self.counter += 1
 
@@ -281,6 +334,7 @@ class Lobby():
             #if(self.counter % 10 == 0):    #Reduce the number of frames captured
             self.images.append(obs)
             info_df = pd.DataFrame([[info[x] for x in self.states]], index = [self.counter], columns=self.states)
+            info_df['Action'] = self.actionName(self.lastAction)
             self.state_df = self.state_df.append(info_df)
             self.counter += 1
 
