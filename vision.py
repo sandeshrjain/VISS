@@ -27,7 +27,7 @@ def main():
     #set parameters
     episodes = 1
     extract_statespace(episodes)
-
+    #experiment(episodes)
 
     return
 
@@ -42,16 +42,15 @@ def extract_statespace(episodes):
 
     templates = tm.loadTemplates('./assets/templates')
 
-    #Set up dataframe to store information in
-    state_df = pd.DataFrame(columns=states)
-
     for e in range(0,episodes):
         for c in characters:
             print('Now Extracting ', c, ' Episode ', e)
             #Load images from numpy matrix
-            title = './assets/data/' + 'episode' + str(e) + '_' + c 
+            title = './assets/data/' + 'episode' + str(e) + '_' + c
             images = np.load(title + '_images.npy')
-            #Creates validation dataset
+            #Set up dataframe to store information in
+            state_df = pd.DataFrame(columns=states)
+            #Load validation dataset
             val_df = pd.read_csv(title + '_statespace.csv',usecols=['Action'])
             #Loop through images
             counter = 0
@@ -62,6 +61,8 @@ def extract_statespace(episodes):
             tm_label, roi = tm.getMatchLocation(np.uint8(frame),templates)
             kcft = cv2.TrackerKCF_create()
             init_kcft = kcft.init(frame, roi)
+
+            #Iterate through images
             for i in range(1,np.shape(images)[0]):
                 # next frame
                 frame = np.uint8(images[i])
@@ -104,7 +105,7 @@ def extract_statespace(episodes):
                 out.write(frame)
                 #cv2.imshow("annotated", frame)
 
-                #print('Current Action', val_df['Action'][i], 'TM Prediction',match_label, 'NN Prediction', nn_status)
+                #Get position and status from template match
                 template_x_pos = np.int32((2*match_loc[0]+match_loc[2])/2.0)
                 template_y_pos = np.int32((2*match_loc[1]+match_loc[3])/2.0)
                 template_status = match_label
@@ -119,19 +120,14 @@ def extract_statespace(episodes):
                 #Get health
                 health = getHealth(frame)
 
-                #Add information to dataframe (placeholder values)
+                #Add information to dataframe
                 info = [[kcft_x_pos, kcft_y_pos, template_x_pos, template_y_pos, nn_status, template_status, val_df['Action'][i], health, time]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
 
-                #cv2.destroyAllWindows()
             out.release()
             cv2.destroyAllWindows()
-
-            #Get ROI, status from template match?
-
-            #Get position from KCFT
 
             #Save df as csv
             print("Saving ", c, ' Episode ', e)
@@ -306,10 +302,11 @@ def ocrText(img):
 
 
 #Here we'll compare the accuracy of our predictions to the values from memory
-def experiment():
+def experiment(episodes):
 
     #Names of the characters fought in each episode
-    characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
+    #characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
+    characters = ['blanka']
 
     for e in range(0,episodes):
         for c in characters:
@@ -319,6 +316,8 @@ def experiment():
             #Load vision csv into pandas dataframe
             vistitle = './data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv'
             vision_df = pd.read_csv(vistitle)
+            print("Memory size = %d" % memory_df.size)
+            print("Vision size = %d" % vision_df.size)
 
             #Find error between our estimates and the memory values
                 #Most values we can get the L2 norm or something
