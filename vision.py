@@ -83,6 +83,10 @@ def extract_statespace(episodes):
                 out.write(cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
                 cv2.imshow("annotated", cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
 
+                #Get position from KCFT
+                x_pos = np.int32((roi[0]+roi[2])/2.0)
+                y_pos = np.int32((roi[1]+roi[3])/2.0)
+
                 #Get timer using OCR
                 time = getTimer(img)
 
@@ -90,7 +94,7 @@ def extract_statespace(episodes):
                 health = getHealth(img)
 
                 #Add information to dataframe (placeholder values)
-                info = [[2.1, 0.5, 'crouch', health, time]]   #pos, state, health, timer
+                info = [[x_pos, y_pos, 'crouch', health, time]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
