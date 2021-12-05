@@ -5,6 +5,7 @@ from PIL import Image
 import pytesseract
 import cv2
 import NN_recog
+import templateMatching
 
 
 kcft = cv2.TrackerKCF_create()
@@ -36,7 +37,9 @@ def extract_statespace(episodes):
     #Names of the characters fought in each episode
     characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
     #Data we're extracting
-    states = ['x_position', 'y_position', 'status', 'health', 'round_timer']
+    states = ['kcft_x_position', 'kcft_y_position', 'template_x_position', 'template_y_position', 'nn_status', 'template_status', 'health', 'round_timer']
+
+    templates = templateMatching.loadTemplates('assets/templates')
 
     #Set up dataframe to store information in
     state_df = pd.DataFrame(columns=states)
@@ -70,35 +73,43 @@ def extract_statespace(episodes):
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
                     gr_frame = cv2.cvtColor(frame[int(roi[1]):int(roi[1]+roi[3]), int(roi[0]):int(roi[0]+roi[2])], cv2.COLOR_BGR2GRAY)
-                    put = "ROI & Action:" + str(NN_recog.pred_loop(gr_frame, model))
+                    nn_status = NN_recog.pred_loop(gr_frame, model)
+                    put = "ROI & Action:" + str(nn_status)
                 else:
                     # In case of failure
-                    cv2.putText(frame, "Target Undetectable", (50,100), 
+                    cv2.putText(frame, "Target Undetectable", (50,100),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255),1)
                     put = "ROI & Action: Undefined"
-                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3, 
+                    nn_status = "undefined"
+                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3,
                             (255,255,255),1);
-            
-            
-                cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2, 
+
+
+                cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2,
                             (0,0,255),1);
-            
+
                 #cv2.imshow(frame)
                 out.write(cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
                 cv2.imshow("annotated", cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
 
-                #Get position from KCFT
-                x_pos = np.int32((roi[0]+roi[2])/2.0)
-                y_pos = np.int32((roi[1]+roi[3])/2.0)
+                #Get character action & location from template match
+                match_label,match_loc = templateMatching.getMatchLocation(np.uint8(img),templates)
+                template_x_pos = np.int32((2*match_loc[0]+match_loc[2])/2.0)
+                template_y_pos = np.int32((2*match_loc[1]+match_loc[3])/2.0)
+                template_status = match_label
 
-                #Get timer using OCR
+                #Get position from KCFT
+                kcft_x_pos = np.int32((roi[0]+roi[2])/2.0)
+                kcft_y_pos = np.int32((roi[1]+roi[3])/2.0)
+
+                #Get timer using template match
                 time = getTimer(img)
 
                 #Get health
                 health = getHealth(img)
 
                 #Add information to dataframe (placeholder values)
-                info = [[x_pos, y_pos, 'crouch', health, time]]   #pos, state, health, timer
+                info = [[kcft_x_pos, kcft_y_pos, template_x_pos, template_y_pos, nn_status, template_status, health, time]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
