@@ -65,22 +65,24 @@ def extract_statespace(episodes):
                 img1 = np.uint8(images[i])
                 # next frame
                 frame = frame = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
-
+                #Get character action & location from template match
+                match_label,match_loc = templateMatching.getMatchLocation(np.uint8(img),templates)
+                # returns topleftX,topleftY,width, height
                 init_kcft, roi = kcft.update(frame)
                 if init_kcft:
                     #  success
                     corner_1 = (int(roi[0]), int(roi[1]))
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
-                    gr_frame = cv2.cvtColor(frame[int(roi[1]):int(roi[1]+roi[3]), int(roi[0]):int(roi[0]+roi[2])], cv2.COLOR_BGR2GRAY)
+                    gr_frame = cv2.cvtColor(frame[int(match_loc[1] - match_loc[3]):int(match_loc[1]), int(match_loc[0] - match_loc[2]):int(match_loc[0])], cv2.COLOR_BGR2GRAY)
                     nn_status = NN_recog.pred_loop(gr_frame, model)
                     put = "ROI & Action:" + str(nn_status)
                 else:
                     # In case of failure
                     cv2.putText(frame, "Target Undetectable", (50,100),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255),1)
-                    put = "ROI & Action: Undefined"
-                    nn_status = "undefined"
+                    put = "ROI Undefined"
+                    #nn_status = "undefined"
                 cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3,
                             (255,255,255),1);
 
@@ -92,12 +94,13 @@ def extract_statespace(episodes):
                 out.write(cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
                 cv2.imshow("annotated", cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
 
-                #Get character action & location from template match
-                match_label,match_loc = templateMatching.getMatchLocation(np.uint8(img),templates)
+                
                 template_x_pos = np.int32((2*match_loc[0]+match_loc[2])/2.0)
                 template_y_pos = np.int32((2*match_loc[1]+match_loc[3])/2.0)
                 template_status = match_label
-
+                # nn_status update if kcft fails
+                gr_frame = cv2.cvtColor(frame[int(match_loc[1] - match_loc[3]):int(match_loc[1]), int(match_loc[0] - match_loc[2]):int(match_loc[0])], cv2.COLOR_BGR2GRAY)
+                nn_status = NN_recog.pred_loop(gr_frame, model)
                 #Get position from KCFT
                 kcft_x_pos = np.int32((roi[0]+roi[2])/2.0)
                 kcft_y_pos = np.int32((roi[1]+roi[3])/2.0)
