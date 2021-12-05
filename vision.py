@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import pytesseract
 import cv2
-import nn_recog
+import NN_recog
 
 
 kcft = cv2.TrackerKCF_create()
 
-train_all, train_all_labels = nn_recog.dataset_proc()
-model = nn_recog.model_dev(train_all, train_all_labels)
+train_all, train_all_labels = NN_recog.dataset_proc()
+model = NN_recog.model_dev(train_all, train_all_labels)
 train_all = []
 train_all_labels = []
 
@@ -25,7 +25,6 @@ def main():
 
     #set parameters
     episodes = 1
-
     extract_statespace(episodes)
 
 
@@ -36,7 +35,6 @@ def extract_statespace(episodes):
 
     #Names of the characters fought in each episode
     characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
-    #characters = ['blanka','chunli','ehonda','ryu','zangief']
     #Data we're extracting
     states = ['x_position', 'y_position', 'status', 'health', 'round_timer']
 
@@ -56,12 +54,13 @@ def extract_statespace(episodes):
             roi = cv2.selectROI(frame, False)
             init_kcft = kcft.init(np.uint8(frame), roi)
             for i in range(1,np.shape(images)[0]):
+                img = images[i]
                 img1 = np.uint8(images[i])
                 # next frame
                 frame = img1
                 # if not init_kcft:
                 #     break
-                # Update 
+                # Update
                 init_kcft, roi = kcft.update(frame)
                 if init_kcft:
                     #  success
@@ -69,44 +68,36 @@ def extract_statespace(episodes):
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
                     k = cv2.waitKey(1) & 0xff
-                    if k == 27 : nn_recog.pred_loop(frame[int(roi[1]):int(roi[1] + roi[3]) , int(roi[0]):int(roi[0] + roi[2])], model)
+                    if k == 27 : NN_recog.pred_loop(frame[int(roi[1]):int(roi[1] + roi[3]) , int(roi[0]):int(roi[0] + roi[2])], model)
                 else :
                     # In case of failure
-                    cv2.putText(frame, "Target Undetectable", (50,100), 
+                    cv2.putText(frame, "Target Undetectable", (50,100),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255),1)
-                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3, 
+                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3,
                             (255,255,255),1);
-                cv2.putText(frame, "ROI", corner_1, cv2.FONT_HERSHEY_PLAIN, 2, 
+                cv2.putText(frame, "ROI", corner_1, cv2.FONT_HERSHEY_PLAIN, 2,
                             (0,0,255),1);
-                cv2.imshow(frame)
-
-                #Test to look at images
-                if(i == 0):
-                    print("Character = " + c + "   Episode = " + str(e))
-                    fig = plt.figure()
-                    plt.imshow(img)
-                    plt.waitforbuttonpress()
-                    plt.close()
+                #cv2.imshow(frame)
 
                 #Get ROI, status from template match?
 
                 #Get position from KCFT
 
                 #Get timer using OCR
-                #time = extractText(img)
+                time = getTimer(img)
 
                 #Get health
-                #health = getHealth(img)
+                health = getHealth(img)
 
                 #Add information to dataframe (placeholder values)
-                info = [[2.1, 0.5, 'crouch', 0, 99]]   #pos, state, health, timer
+                info = [[2.1, 0.5, 'crouch', health, time]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
 
             #Save df as csv
-            #print("saving")
-            #state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
+            print("saving")
+            state_df.to_csv('./data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv')
 
     return
 
@@ -133,8 +124,94 @@ def getHealth(img):
 
     return health
 
-#Runs through images in the dataset and reports the timer at each frame
-def extractText(img):
+#Saves thresholded numbers (0-9) as templates
+def saveNumberTemplate():
+
+    #Load images from numpy matrix
+    title = './data/episode0_blanka_images.npy'
+    images = np.load(title)
+
+    x1 = 29
+    x2 = 40
+    y1 = 120
+    y2 = 135
+
+    numb = 9
+    for i in range(0,np.shape(images)[0]):
+        img = images[i]
+        roi = img[x1:x2, y1:y2]
+        #Manually create thresholded image
+        red = np.array([232,0,0])               #Colors in the timer numbers
+        yellow = np.array([232,204,0])
+        orange = np.array([232,100,0])
+        roi_thresh = np.zeros(np.shape(roi),np.int32())
+        for r in range(0,np.shape(roi)[0]):
+            for c in range(0,np.shape(roi)[1]):
+                if(np.array_equal(roi[r][c],red) or np.array_equal(roi[r][c],yellow) or np.array_equal(roi[r][c],orange)):
+                    roi_thresh[r][c] = [0,0,0]
+                else:
+                    roi_thresh[r][c] = [255,255,255]
+        #show/save images as templates
+        if(i % 40 == 0 and i < 370):
+            roi_thresh = roi_thresh[:,8:]
+            cv2.imwrite('./assets/numbers/'+str(numb)+'_thresh.png',roi_thresh)
+            numb -= 1
+
+    for i in range(0,10):
+        title = './assets/numbers/' + str(i)+'_thresh.png'
+        img = np.asarray(Image.open(title))
+        #img = img.astype("float32")/255.0
+        fig = plt.figure()
+        plt.imshow(img)
+        plt.waitforbuttonpress()
+        plt.close()
+
+    return
+
+#Uses template matching to read the time remaining for the match
+def getTimer(img):
+
+    x1 = 29
+    x2 = 40
+    y1 = 120
+    y2 = 135
+
+    #Get roi for both digits
+    roi = img[x1:x2, y1:y2]
+
+    #Manually create thresholded image
+    red = np.array([232,0,0])               #Colors in the timer numbers
+    yellow = np.array([232,204,0])
+    orange = np.array([232,100,0])
+    roi_thresh = np.zeros(np.shape(roi),np.int32())
+    for r in range(0,np.shape(roi)[0]):
+        for c in range(0,np.shape(roi)[1]):
+            if(np.array_equal(roi[r][c],red) or np.array_equal(roi[r][c],yellow) or np.array_equal(roi[r][c],orange)):
+                roi_thresh[r][c] = [0,0,0]
+            else:
+                roi_thresh[r][c] = [255,255,255]
+
+    left_roi = roi_thresh[:, :7]
+    right_roi = roi_thresh[:, 8:]
+
+    #Try to match both numbers
+    left_num = 0
+    right_num = 0
+    for i in range(0,10):
+        title = './assets/numbers/' + str(i) + '_thresh.png'
+        img = np.asarray(Image.open(title))
+        #img = img.astype("float32")/255.0
+        if(np.array_equal(img,left_roi)):
+            left_num = i
+        if(np.array_equal(img,right_roi)):
+            right_num = i
+
+    time = 10*left_num + right_num
+
+    return time
+
+#Runs through images in the dataset and attempts to use OCR recognition. Doesn't work.
+def ocrText(img):
 
     #Set region of image where timer is
     #Exact box around numbers
@@ -148,38 +225,8 @@ def extractText(img):
     y1 = 117
     y2 = 138
 
-    #Test - blur the entire image
-    #img = cv2.GaussianBlur(np.float32(img),(3,3),cv2.BORDER_DEFAULT)
-    #img = img/np.amax(img)
-    #fig = plt.figure()
-    #plt.imshow(img)
-    #plt.waitforbuttonpress()
-    #plt.cla()
-
     #Get ROI for timer
     roi = img[x1:x2, y1:y2]
-    #roi = cv2.cvtColor(np.float32(roi), cv2.COLOR_BGRA2GRAY)
-
-    #Blur the ROI w/ timer
-    #roi = cv2.GaussianBlur(np.float32(roi),(3,3),cv2.BORDER_DEFAULT)
-    #roi = roi/np.amax(roi)
-    #fig = plt.figure()
-    #plt.imshow(roi)
-    #plt.waitforbuttonpress()
-    #plt.close()
-
-
-    #Test detection w/o thresholding
-    #pil_img = Image.fromarray(roi)  #Change from openCV BGR to Pillow RGB
-    #if(pil_img.mode != 'RGB'):
-#        pil_img = pil_img.convert('RGB')
-    #text = pytesseract.image_to_string(pil_img, lang='eng', config='-c tessedit_char_whitelist=0123456789')
-    #text = pytesseract.image_to_string(pil_img, lang='eng', config='digits')
-    #print("ROI text = " + text)
-
-
-    #Threshold image for text extraction
-    #junk, roi_thresh = cv2.threshold(roi, 65, 255, cv2.THRESH_BINARY)
 
     #Manually create thresholded image
     red = np.array([232,0,0])               #Colors in the timer numbers
