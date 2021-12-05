@@ -19,7 +19,7 @@ import random
 class_names = ['walking', 'block', 'idle'] #can add character names here
 c = len(class_names) #used for output of the neural network
 #video = ""  #name of the video to perform detection on
-prefix = "C:/Users/Sandesh Jain/OneDrive/Documents/Acads_VT/SEM2/CV/Project/training/training/"
+prefix = "./training/"
 all_paths  = [prefix + x for x in class_names]
 # feed the nn with 100x100 images, hence resize function:
 def resizeImage(image):
@@ -28,10 +28,10 @@ def resizeImage(image):
     return resized
 
 
-#currently takes 2 paths for +ve and -ve data folders, can place input arg to 
+#currently takes 2 paths for +ve and -ve data folders, can place input arg to
 # receive custom paths, additionally for loop can be added to reduce boilerplate code
 def dataset_proc():
-    
+
     train_all = []
     train_all_labels = []
     idx = 0
@@ -43,13 +43,13 @@ def dataset_proc():
         else:
             index = random.sample(files, 100)
         for img in index:
-            
+
             image = cv2.imread(path+"/" + img, 0)
             image = resizeImage(image)
             train_all.append(np.reshape(image, (image.shape[0]*image.shape[1], 1)))
-            train_all_labels.append(idx) 
+            train_all_labels.append(idx)
         idx+=1
-        
+
     Y_train = keras.utils.to_categorical(train_all_labels)
     return np.array(train_all)[:,:,0], Y_train
 
@@ -62,11 +62,11 @@ def model_dev(train_all, train_all_labels):
         keras.layers.Dense(256, activation=tf.nn.relu),
         keras.layers.Dense(c, activation=tf.nn.softmax) #s, c, f =(0.7,0.1,0.2)
     ])
-    
+
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
-    
+
     model.fit(train_all, train_all_labels,epochs=200, batch_size = 128)
     return model
 
@@ -74,11 +74,11 @@ def model_dev(train_all, train_all_labels):
 # train_all, train_all_labels = dataset_proc()
 
 # model = model_dev(train_all, train_all_labels)
-    
+
 # supposed to be used with the kcft input and displays the result
 # currently handles binary input but can be scaled easily
 
-def pred_loop(frame, model):    
+def pred_loop(frame, model):
 
     gray_img = frame
     img_cut = resizeImage(gray_img)
@@ -91,12 +91,12 @@ def pred_loop(frame, model):
     # gray_img = cv2.putText(gray_img, class_names[pred_class], (1,1), cv2.FONT_ITALIC, 0.75, (0,0,255), 3)
     # gray_img = cv2.putText(gray_img, "Prediction Confidence = "+str(oncam_pred[pred_class]),
     #                   (1,1), cv2.FONT_ITALIC, 0.75, (0,0,255), 3)
-          
+
     # cv2.imshow('gray_img',gray_img)
     # key_pressed = cv2.waitKey(1) & 0xFF
     # if key_pressed ==27:
     #     cv2.destroyAllWindows()
-        
+
     return class_names[pred_class]
 
 
@@ -113,7 +113,7 @@ def tracker(vid_name):
     kcft = cv2.TrackerKCF_create()
     curve=[]
     vid = cv2.VideoCapture(vid_name)
-    init_kcft, frame = vid.read()    
+    init_kcft, frame = vid.read()
     roi = cv2.selectROI(frame, False)
     init_kcft = kcft.init(frame, roi)
     height, width, layers = frame.shape
@@ -125,7 +125,7 @@ def tracker(vid_name):
             init_kcft, frame = vid.read()
             if not init_kcft:
                 break
-            # Update 
+            # Update
             init_kcft, roi = kcft.update(frame)
             if init_kcft:
                 #  success
@@ -136,16 +136,16 @@ def tracker(vid_name):
                 put = "ROI & Action:" + str(pred_loop(gr_frame, model))
             else :
                 # In case of failure
-                cv2.putText(frame, "Target Undetectable", (50,100), 
+                cv2.putText(frame, "Target Undetectable", (50,100),
                             cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255),1)
                 put = "ROI & Action: Undefined"
-            cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3, 
+            cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3,
                         (255,255,255),1);
-            
-            
-            cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2, 
+
+
+            cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2,
                         (0,0,255),1);
-            
+
             # Display result
             cv2.imshow("Tracking", frame)
             dim = (250,200)
@@ -153,9 +153,9 @@ def tracker(vid_name):
             out.write((frame))
             # Exit if ESC pressed
             k = cv2.waitKey(1) & 0xff
-            if k == 27 : 
-                out.release() 
+            if k == 27 :
+                out.release()
                 break
     cv2.destroyAllWindows()
     out.release()
-tracker("C:/Users/Sandesh Jain/Documents/Python Scripts/game1.webm")
+tracker("./assets/game1.webm")
