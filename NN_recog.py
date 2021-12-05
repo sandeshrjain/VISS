@@ -19,7 +19,7 @@ import random
 class_names = ['block', 'crouch', 'idle', 'walking', 'jump', 'kick', 'punch'] #can add character names here
 c = len(class_names) #used for output of the neural network
 #video = ""  #name of the video to perform detection on
-prefix = "./training/"
+prefix = "assets/training/"
 all_paths  = [prefix + x for x in class_names]
 # feed the nn with 100x100 images, hence resize function:
 def resizeImage(image):
