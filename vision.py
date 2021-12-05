@@ -52,6 +52,7 @@ def extract_statespace(episodes):
             counter = 0
             init_kcft, frame = True, images[0]
             frame = (np.uint8(frame))
+            frame = cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB)
             height, width, layers = images[0].shape
             size = (width, height)
 
@@ -61,7 +62,7 @@ def extract_statespace(episodes):
             for i in range(1,np.shape(images)[0]):
                 img1 = np.uint8(images[i])
                 # next frame
-                frame = img1
+                frame = frame = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
             
                 init_kcft, roi = kcft.update(frame)
                 if init_kcft:
