@@ -69,16 +69,20 @@ def extract_statespace(episodes):
                     corner_1 = (int(roi[0]), int(roi[1]))
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
-                    k = cv2.waitKey(1) & 0xff
-                    if k == 27 : break
-                else :
+                    gr_frame = cv2.cvtColor(frame[int(roi[1]):int(roi[1]+roi[3]), int(roi[0]):int(roi[0]+roi[2])], cv2.COLOR_BGR2GRAY)
+                    put = "ROI & Action:" + str(NN_recog.pred_loop(gr_frame, model))
+                else:
                     # In case of failure
-                    cv2.putText(frame, "Target Undetectable", (50,100),
+                    cv2.putText(frame, "Target Undetectable", (50,100), 
                                 cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255),1)
-                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3,
+                    put = "ROI & Action: Undefined"
+                cv2.putText(frame, "KCF Tracker", (50,50), cv2.FONT_HERSHEY_PLAIN, 3, 
                             (255,255,255),1);
-                cv2.putText(frame, "ROI", corner_1, cv2.FONT_HERSHEY_PLAIN, 2,
+            
+            
+                cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2, 
                             (0,0,255),1);
+            
                 #cv2.imshow(frame)
                 out.write(cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
                 cv2.imshow("annotated", cv2.cvtColor(np.uint8(frame), cv2.COLOR_BGR2RGB))
