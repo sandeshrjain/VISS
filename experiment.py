@@ -22,6 +22,11 @@ def main():
     avg_template_acc = 0.0
     avg_nn_acc = 0.0
 
+    #Making histograms across all characters
+    hist_kcft_pos = np.array([])
+    hist_temp_pos = np.array([])
+    hist_health = np.array([])
+
     for e in range(0,episodes):
         for c in characters:
             #Load memory csv into pandas dataframe
@@ -54,13 +59,37 @@ def main():
             avg_temp_pos_acc += temp_pos_mse
 
             #Make histogram of errors between individual measurements to compare kcft and template position
+            ind_diff_kcft = np.zeros(len(mem_df.index),dtype=np.float64())
+            ind_diff_temp = np.zeros(len(mem_df.index),dtype=np.float64())
+            for i in range(0,len(mem_df.index)):
+                if(np.linalg.norm(actual_pos[i])==0):
+                    ind_diff_kcft[i] = 0
+                    ind_diff_temp[i] = 0
+                else:
+                    ind_diff_kcft[i] = np.linalg.norm(kcft_pos[i]-actual_pos[i]) / np.linalg.norm(actual_pos[i])
+                    ind_diff_temp[i] = np.linalg.norm(template_pos[i]-actual_pos[i]) / np.linalg.norm(actual_pos[i])
+            hist_kcft_pos = np.append(hist_kcft_pos,ind_diff_kcft)
+            hist_temp_pos = np.append(hist_temp_pos,ind_diff_temp)
 
             #Find error with health measurements
             norm_mem_health = mem_df[['health']].to_numpy() / 176.0
+            norm_mem_health = norm_mem_health * 100
             vis_health = vis_df[['health']].to_numpy()
+            #Fix values in our data
+            for i in range(0,vis_health.size):
+                if(vis_health[i] == 0):
+                    vis_health[i] = -1
             health_mse = np.linalg.norm(vis_health-norm_mem_health) / np.linalg.norm(norm_mem_health)
             print(c+": Overall health estimate accuracy = %f" % health_mse)
             avg_health_acc += health_mse
+            ind_diff_health = np.zeros(len(mem_df.index),dtype=np.float64())
+            for i in range(0,len(mem_df.index)):
+                if(np.linalg.norm(norm_mem_health[i])==0):
+                    ind_diff_health[i] = 0
+                else:
+                    ind_diff_health[i] = np.linalg.norm(ind_diff_health[i]-norm_mem_health[i]) / np.linalg.norm(norm_mem_health[i])
+            hist_health = np.append(hist_health,ind_diff_health)
+
 
             #Find error with time measurements
             #Timer starts at ~39205 then counts down, 40 fps
@@ -92,14 +121,6 @@ def main():
             print(c+": Overall accuracy of neural network matching states = %f" %(nn_correct/nn_samples))
             avg_nn_acc += (nn_correct/nn_samples)
 
-            #NN state prediction
-
-
-            #Find error between our estimates and the memory values
-                #Most values we can get the L2 norm or something
-                #Need to present character status in different graph (recall/precision?)
-
-            #save results to graph in array
     #Find average scores
     avg_kcft_pos_acc = avg_kcft_pos_acc / (episodes*len(characters))
     avg_temp_pos_acc = avg_temp_pos_acc / (episodes*len(characters))
@@ -115,7 +136,23 @@ def main():
     print("Average template matching action prediction accuracy = %f" %avg_template_acc)
     print("Average neural network action prediction accuracy = %f" % avg_nn_acc)
 
-    #Use matplotlib to present information across n episodes in one figure
+    #Histogram comparing position accuracies
+    fig = plt.figure()
+    plt.hist(hist_kcft_pos,40,alpha=0.5,label='KCFT')
+    plt.hist(hist_temp_pos,40,alpha=0.5,label='Template Match')
+    plt.title("Relative Error Between Estimated and True Position (all characters)")
+    plt.legend(loc='upper left')
+    plt.xlabel('Relative Error')
+    plt.ylabel('Count')
+    plt.show()
+
+    #Histogram showing health accuarcy
+    fig = plt.figure()
+    plt.hist(hist_health,50,range=(0.95,1.2))
+    plt.title("Relative Error Between Estimated and True Health (all characters)")
+    plt.xlabel('Relative Error')
+    plt.ylabel('Count')
+    plt.show()
 
     return
 
