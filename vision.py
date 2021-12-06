@@ -28,7 +28,6 @@ def main():
     #set parameters
     episodes = 1
     extract_statespace(episodes)
-    #experiment(episodes)
 
     return
 
@@ -37,7 +36,7 @@ def extract_statespace(episodes):
 
     #Names of the characters fought in each episode
     characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
-    #characters = ['blanka']
+
     #Data we're extracting
     states = ['kcft_x_position', 'kcft_y_position', 'template_x_position', 'template_y_position', 'nn_status', 'template_status', 'validation_status','health', 'round_timer']
 
@@ -131,10 +130,10 @@ def extract_statespace(episodes):
                 kcft_y_pos = np.int32((roi[1]+roi[3])/2.0)
 
                 #Get timer using template match
-                time = getTimer(frame)
+                time = getTimer(images[i])
 
                 #Get health
-                health = getHealth(frame)
+                health = getHealth(images[i])
 
                 #Add information to dataframe
                 info = [[kcft_x_pos, kcft_y_pos, template_x_pos, template_y_pos, nn_status, template_status, val_df['Action'][i], health, time]]   #pos, state, health, timer
@@ -316,38 +315,6 @@ def ocrText(img):
     plt.close()
 
     return 0
-
-
-
-#Here we'll compare the accuracy of our predictions to the values from memory
-def experiment(episodes):
-
-    #Names of the characters fought in each episode
-    #characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
-    characters = ['blanka']
-
-    for e in range(0,episodes):
-        for c in characters:
-            #Load memory csv into pandas dataframe
-            memtitle = './data/' + 'episode' + str(e) + '_' + c + '_statespace.csv'
-            memory_df = pd.read_csv(memtitle)
-            #Load vision csv into pandas dataframe
-            vistitle = './data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv'
-            vision_df = pd.read_csv(vistitle)
-            print("Memory size = %d" % memory_df.size)
-            print("Vision size = %d" % vision_df.size)
-
-            #Find error between our estimates and the memory values
-                #Most values we can get the L2 norm or something
-                #Need to present character status in different graph (recall/precision?)
-
-            #save results to graph in array
-
-    #Use matplotlib to present information across n episodes in one figure
-
-    return
-
-
 
 if __name__ == "__main__":
     main()
