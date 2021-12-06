@@ -28,6 +28,7 @@ def main():
     hist_health = np.array([])
     hist_time = np.array([])
 
+    samples = 0
     for e in range(0,episodes):
         for c in characters:
             #Load memory csv into pandas dataframe
@@ -63,6 +64,7 @@ def main():
             ind_diff_kcft = np.zeros(len(mem_df.index),dtype=np.float64())
             ind_diff_temp = np.zeros(len(mem_df.index),dtype=np.float64())
             for i in range(0,len(mem_df.index)):
+                samples += 1
                 if(np.linalg.norm(actual_pos[i])==0):
                     ind_diff_kcft[i] = 0
                     ind_diff_temp[i] = 0
@@ -146,10 +148,11 @@ def main():
     avg_template_acc = avg_template_acc / (episodes*len(characters))
     avg_nn_acc = avg_nn_acc / (episodes*len(characters))
     print("\n==============Average Scores======================")
-    print("Average kcft position tracking accuracy = %f" % avg_kcft_pos_acc)
-    print("Average template match position tracking accuracy = %f" % avg_temp_pos_acc)
-    print("Average health estimation accuracy = %f" % avg_health_acc)
-    print("Average time estimation accuracy = %f" % avg_time_acc)
+    print("Total samples = %d" % samples)
+    print("Average kcft position tracking relative error = %f" % avg_kcft_pos_acc)
+    print("Average template match position tracking relative error = %f" % avg_temp_pos_acc)
+    print("Average health estimation relative error = %f" % avg_health_acc)
+    print("Average time estimation relative error = %f" % avg_time_acc)
     print("Average template matching action prediction accuracy = %f" %avg_template_acc)
     print("Average neural network action prediction accuracy = %f" % avg_nn_acc)
 
