@@ -26,6 +26,7 @@ def main():
     hist_kcft_pos = np.array([])
     hist_temp_pos = np.array([])
     hist_health = np.array([])
+    hist_time = np.array([])
 
     for e in range(0,episodes):
         for c in characters:
@@ -87,7 +88,12 @@ def main():
                 if(np.linalg.norm(norm_mem_health[i])==0):
                     ind_diff_health[i] = 0
                 else:
-                    ind_diff_health[i] = np.linalg.norm(ind_diff_health[i]-norm_mem_health[i]) / np.linalg.norm(norm_mem_health[i])
+                    ind_diff_health[i] = np.linalg.norm(vis_health[i]-norm_mem_health[i]) / np.linalg.norm(norm_mem_health[i])
+                    #if(ind_diff_health[i] > 1):
+                        #print("Vision health = %f" % vis_health[i])
+                        #print("Mem health = %f" % norm_mem_health[i])
+                    #print("Relative error = %f" % ind_diff_health[i])
+                    #print("")
             hist_health = np.append(hist_health,ind_diff_health)
 
 
@@ -101,6 +107,17 @@ def main():
             time_rel_err = np.linalg.norm(vis_time - adjusted_mem_time) / np.linalg.norm(adjusted_mem_time)
             print(c+": Overall time estimate accuracy = %f" % time_rel_err)
             avg_time_acc += time_rel_err
+            ind_diff_time = np.zeros(len(mem_df.index),dtype=np.float64())
+            for i in range(0,len(mem_df.index)):
+                if(np.linalg.norm(adjusted_mem_time)==0):
+                    ind_diff_time[i] = 0
+                else:
+                    ind_diff_time[i] = np.linalg.norm(vis_time[i]-adjusted_mem_time[i]) / np.linalg.norm(adjusted_mem_time[i])
+                if(ind_diff_time[i] > 1.0):
+                    print("memory time = %f" % mem_time[i])
+                    print("read time = %f" % vis_time[i])
+                    print("adjusted time = %f\n" % adjusted_mem_time[i])
+            hist_time = np.append(hist_time,ind_diff_time)
 
             #State prediction
             #Should probaly ignore 'block','face_hit','hit','stunned','victory','knockdown','knockout' for template matching
@@ -148,8 +165,16 @@ def main():
 
     #Histogram showing health accuarcy
     fig = plt.figure()
-    plt.hist(hist_health,50,range=(0.95,1.2))
+    plt.hist(hist_health,40,range=(0.0,1.2))
     plt.title("Relative Error Between Estimated and True Health (all characters)")
+    plt.xlabel('Relative Error')
+    plt.ylabel('Count')
+    plt.show()
+
+    #Histogram showing health accuarcy
+    fig = plt.figure()
+    plt.hist(hist_time,50)
+    plt.title("Relative Error Between Estimated and True Time (all characters)")
     plt.xlabel('Relative Error')
     plt.ylabel('Count')
     plt.show()
