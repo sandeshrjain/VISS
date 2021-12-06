@@ -14,7 +14,8 @@ train_all, train_all_labels = NN_recog.dataset_proc()
 model = NN_recog.model_dev(train_all, train_all_labels)
 train_all = []
 train_all_labels = []
-
+#train_labels = ['block', 'crouch', 'idle', 'walking', 'jump', 'punch', 'kick']
+train_labels = ['kick', 'punch', 'jump', 'walking', 'idle', 'block', 'crouch']
 def show_image(img):
   fig = plt.figure()
   fig.set_size_inches(18, 10) # You can adjust the size of the displayed figure
@@ -28,7 +29,6 @@ def main():
     episodes = 1
     extract_statespace(episodes)
 
-
     return
 
 #Extracts state information from the images from ML training
@@ -36,32 +36,35 @@ def extract_statespace(episodes):
 
     #Names of the characters fought in each episode
     characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
-    characters = ['blanka']
+
     #Data we're extracting
     states = ['kcft_x_position', 'kcft_y_position', 'template_x_position', 'template_y_position', 'nn_status', 'template_status', 'validation_status','health', 'round_timer']
 
     templates = tm.loadTemplates('./assets/templates')
 
-    #Set up dataframe to store information in
-    state_df = pd.DataFrame(columns=states)
-
     for e in range(0,episodes):
         for c in characters:
             print('Now Extracting ', c, ' Episode ', e)
             #Load images from numpy matrix
-            title = './assets/data/' + 'episode' + str(e) + '_' + c 
+            title = './assets/data/' + 'episode' + str(e) + '_' + c
             images = np.load(title + '_images.npy')
-            #Creates validation dataset
+            #Set up dataframe to store information in
+            state_df = pd.DataFrame(columns=states)
+            #Load validation dataset
             val_df = pd.read_csv(title + '_statespace.csv',usecols=['Action'])
             #Loop through images
             counter = 0
             init_kcft, frame = True, np.uint8(images[0])
-            size = (frame.shape[0], frame.shape[1])
-            out = cv2.VideoWriter('project_annotated_'+c+'.avi',cv2.VideoWriter_fourcc(*'DIVX'), 40, size)
+            #size = (frame.shape[0], frame.shape[1])
+            size = (250,200)
+            #out = cv2.VideoWriter('project_mod.avi',cv2.VideoWriter_fourcc(*'DIVX'), 25, size)
+            out = cv2.VideoWriter('project_annotated_'+c+'_2.avi',cv2.VideoWriter_fourcc(*'DIVX'), 40, size)
             # Gets initial image and initializes KCFT
             tm_label, roi = tm.getMatchLocation(np.uint8(frame),templates)
             kcft = cv2.TrackerKCF_create()
             init_kcft = kcft.init(frame, roi)
+
+            #Iterate through images
             for i in range(1,np.shape(images)[0]):
                 # next frame
                 frame = np.uint8(images[i])
@@ -74,9 +77,16 @@ def extract_statespace(episodes):
                     corner_1 = (int(roi[0]), int(roi[1]))
                     corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                     cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
-                    gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
-                    nn_status = NN_recog.pred_loop(gr_frame, model)
-                    put = "ROI & Action:" + str(nn_status)
+                    # Checks if current label is able to be predicted by NN
+                    for label in train_labels:
+                        if label in val_df['Action'][i]:
+                            gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
+                            nn_status = NN_recog.pred_loop(gr_frame, model)
+                            put = "ROI & Action:" + str(nn_status)
+                            break;
+                        else:
+                            put = "Action Undefined"
+                            nn_status = "N/A"
                 else:
                     # check with template matching if KCFT cant detect
                     match_label, roi = tm.getMatchLocation(frame, templates)
@@ -88,9 +98,16 @@ def extract_statespace(episodes):
                         corner_1 = (int(roi[0]), int(roi[1]))
                         corner_3 = (int(roi[0] + roi[2]), int(roi[1] + roi[3]))
                         cv2.rectangle(frame, corner_1, corner_3, (0,0,0), 3, 2)
-                        gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
-                        nn_status = NN_recog.pred_loop(gr_frame, model)
-                        put = "ROI & Action:" + str(nn_status)
+                        # Checks if current label is able to be predicted by NN
+                        for label in train_labels:
+                            if label in val_df['Action'][i]:
+                                gr_frame = cv2.cvtColor(frame[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]], cv2.COLOR_RGB2GRAY)
+                                nn_status = NN_recog.pred_loop(gr_frame, model)
+                                put = "ROI & Action:" + str(nn_status)
+                                break;
+                            else:
+                                put = "Action Undefined"
+                                nn_status = "N/A"
                     else:
                         # In case of failure
                         cv2.putText(frame, "Target Undetectable", (50,100),
@@ -101,10 +118,9 @@ def extract_statespace(episodes):
                             (255,255,255),1);
                 cv2.putText(frame, put, corner_1, cv2.FONT_HERSHEY_PLAIN, 2,
                             (0,0,255),1);
-                out.write(frame)
                 #cv2.imshow("annotated", frame)
 
-                #print('Current Action', val_df['Action'][i], 'TM Prediction',match_label, 'NN Prediction', nn_status)
+                #Get position and status from template match
                 template_x_pos = np.int32((2*match_loc[0]+match_loc[2])/2.0)
                 template_y_pos = np.int32((2*match_loc[1]+match_loc[3])/2.0)
                 template_status = match_label
@@ -114,24 +130,21 @@ def extract_statespace(episodes):
                 kcft_y_pos = np.int32((roi[1]+roi[3])/2.0)
 
                 #Get timer using template match
-                time = getTimer(frame)
+                time = getTimer(images[i])
 
                 #Get health
-                health = getHealth(frame)
+                health = getHealth(images[i])
 
-                #Add information to dataframe (placeholder values)
+                #Add information to dataframe
                 info = [[kcft_x_pos, kcft_y_pos, template_x_pos, template_y_pos, nn_status, template_status, val_df['Action'][i], health, time]]   #pos, state, health, timer
                 info_df = pd.DataFrame(info, index = [counter], columns=states)
                 state_df = state_df.append(info_df)
                 counter += 1
 
                 #cv2.destroyAllWindows()
+                out.write(cv2.cvtColor(cv2.resize(frame, size,  interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB))
             out.release()
-            cv2.destroyAllWindows()
-
-            #Get ROI, status from template match?
-
-            #Get position from KCFT
+            #cv2.destroyAllWindows()
 
             #Save df as csv
             print("Saving ", c, ' Episode ', e)
@@ -302,35 +315,6 @@ def ocrText(img):
     plt.close()
 
     return 0
-
-
-
-#Here we'll compare the accuracy of our predictions to the values from memory
-def experiment():
-
-    #Names of the characters fought in each episode
-    characters = ['blanka','chunli','dahlism','ehonda','guile','ken','ryu','zangief']
-
-    for e in range(0,episodes):
-        for c in characters:
-            #Load memory csv into pandas dataframe
-            memtitle = './data/' + 'episode' + str(e) + '_' + c + '_statespace.csv'
-            memory_df = pd.read_csv(memtitle)
-            #Load vision csv into pandas dataframe
-            vistitle = './data/' + 'episode' + str(e) + '_' + c + '_vision_states.csv'
-            vision_df = pd.read_csv(vistitle)
-
-            #Find error between our estimates and the memory values
-                #Most values we can get the L2 norm or something
-                #Need to present character status in different graph (recall/precision?)
-
-            #save results to graph in array
-
-    #Use matplotlib to present information across n episodes in one figure
-
-    return
-
-
 
 if __name__ == "__main__":
     main()
