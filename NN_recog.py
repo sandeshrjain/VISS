@@ -126,9 +126,9 @@ dataset_proc()
 # Takes in the training set and returns the fit model
 def model_dev(train_all, train_all_labels):
     model = keras.Sequential([
-        keras.layers.Dense(64, activation=tf.nn.relu, input_shape = (4900,)),
+        keras.layers.Dense(256, activation=tf.nn.relu, input_shape = (4900,)),
         keras.layers.Dense(128, activation=tf.nn.relu),
-        keras.layers.Dense(256, activation=tf.nn.relu),
+        keras.layers.Dense(64, activation=tf.nn.relu),
         keras.layers.Dense(c, activation=tf.nn.softmax) #s, c, f =(0.7,0.1,0.2)
     ])
 
