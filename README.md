@@ -3,7 +3,7 @@ Final project for ECE 4554 / 5554 / Computer Vision Fall 2021
 
 
 ### Description
-- 
+- Detailed project report: https://github.com/sandeshrjain/VISS/blob/main/CV_Project_Report.pdf
 
 # Requirements
 - Python
